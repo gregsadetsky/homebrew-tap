@@ -1,0 +1,27 @@
+name: install test
+# does what the readme tells a user to do, on a clean macos runner:
+# tap, install the cask, check the app is there, launch it, check the quick
+# look extension registered, preview a sample through it.
+on:
+  push:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+jobs:
+  install:
+    runs-on: macos-15
+    steps:
+      - run: brew tap gregsadetsky/tap
+      - run: brew install --cask spacebar
+      - run: ls -la /Applications/Spacebar.app && codesign -dv /Applications/Spacebar.app 2>&1 | head -3
+      - name: launch once (syncs bundled plugins)
+        run: open -a /Applications/Spacebar.app && sleep 5 && ls "$HOME/Library/Containers/io.spacebar.app.QuickLook/Data/Library/Application Support/Spacebar/Plugins"
+      - name: extension registered
+        run: pluginkit -m -v -i io.spacebar.app.QuickLook | tee out.txt && grep -q io.spacebar.app.QuickLook out.txt
+      - name: preview a sample through the extension (best effort on runners)
+        run: |
+          pluginkit -e use -i io.spacebar.app.QuickLook || true
+          printf '{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Point","coordinates":[10.75,59.91]},"properties":{"name":"Oslo"}}]}' > /tmp/t.geojson
+          qlmanage -p /tmp/t.geojson & sleep 6; kill %1 || true
+          /usr/bin/log show --info --last 2m --predicate 'subsystem == "io.spacebar"' | grep rendered || echo "no render line (extension may be disabled on this runner)"
+      - run: brew uninstall --zap --cask spacebar && test ! -e /Applications/Spacebar.app
