@@ -12,6 +12,7 @@ jobs:
     runs-on: macos-15
     steps:
       - run: brew tap gregsadetsky/tap
+      - run: brew trust gregsadetsky/tap
       - run: brew install --cask spacebar
       - run: ls -la /Applications/Spacebar.app && codesign -dv /Applications/Spacebar.app 2>&1 | head -3
       - name: launch once (syncs bundled plugins)
